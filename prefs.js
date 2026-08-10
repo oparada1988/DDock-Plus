@@ -135,6 +135,55 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
         customGroup.add(customCombo);
         page.add(customGroup);
 
+        // ------------------------------------------------------------- Window Thumbnails
+        const thumbnailsGroup = new Adw.PreferencesGroup({
+            title: 'Minimized Windows',
+            description: 'Park thumbnails of minimized windows in the dock',
+        });
+        const thumbnailsSwitch = new Adw.SwitchRow({
+            title: 'Enable Window Thumbnails',
+            subtitle: 'Park thumbnails of minimized windows in macOS style',
+        });
+        settings.bind('enable-minimized-thumbnails', thumbnailsSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+        thumbnailsGroup.add(thumbnailsSwitch);
+        page.add(thumbnailsGroup);
+
+        // ------------------------------------------------------------- Dynamic Monitor Switch
+        const monitorGroup = new Adw.PreferencesGroup({
+            title: 'Dynamic Monitor Switch',
+            description: 'Automatically move dock to display when mouse cursor rests at display edge',
+        });
+        const monitorSwitch = new Adw.SwitchRow({
+            title: 'Enable Dynamic Monitor Switch',
+            subtitle: 'Move dock to display when mouse rests at screen edge',
+        });
+        settings.bind('enable-dynamic-monitor-switch', monitorSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+        monitorGroup.add(monitorSwitch);
+
+        const delayRow = new Adw.ActionRow({
+            title: 'Switch Delay (seconds)',
+            subtitle: 'Time to hold cursor at display edge before moving dock',
+        });
+        const spinBtn = new Gtk.SpinButton({
+            adjustment: new Gtk.Adjustment({
+                lower: 0.5,
+                upper: 10.0,
+                step_increment: 0.5,
+                page_increment: 1.0,
+                value: settings.get_double('dynamic-monitor-switch-delay') || 2.5,
+            }),
+            climb_rate: 0.5,
+            digits: 1,
+            valign: Gtk.Align.CENTER,
+        });
+        spinBtn.connect('value-changed', (spin) => {
+            settings.set_double('dynamic-monitor-switch-delay', spin.get_value());
+        });
+        delayRow.add_suffix(spinBtn);
+        delayRow.set_activatable_widget(spinBtn);
+        monitorGroup.add(delayRow);
+        page.add(monitorGroup);
+
         window.add(page);
     }
 }

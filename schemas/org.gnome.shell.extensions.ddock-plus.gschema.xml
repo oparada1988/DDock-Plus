@@ -36,5 +36,20 @@
       <summary>Custom Folder View Mode</summary>
       <description>View mode for Custom Folder stack: 'list' (fan) or 'grid' (4x6 grid)</description>
     </key>
+    <key name="enable-minimized-thumbnails" type="b">
+      <default>true</default>
+      <summary>Enable Minimized Window Thumbnails</summary>
+      <description>Park thumbnails of minimized windows on the dock</description>
+    </key>
+    <key name="enable-dynamic-monitor-switch" type="b">
+      <default>true</default>
+      <summary>Enable Dynamic Monitor Switch</summary>
+      <description>Automatically move dock to monitor when cursor rests at display edge</description>
+    </key>
+    <key name="dynamic-monitor-switch-delay" type="d">
+      <default>2.5</default>
+      <summary>Dynamic Monitor Switch Delay</summary>
+      <description>Delay in seconds required at display edge before switching dock monitor</description>
+    </key>
   </schema>
 </schemalist>

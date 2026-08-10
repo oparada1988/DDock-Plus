@@ -3,6 +3,7 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as CustomFolderStack from './modules/customfolderStack.js';
 import * as DocumentsStack from './modules/documentsStack.js';
 import * as DownloadsStack from './modules/downloadsStack.js';
+import * as DynamicMonitorSwitch from './modules/dynamicMonitorSwitch.js';
 import * as HideMinimizedWindows from './modules/hideMinimizedWindows.js';
 import * as MinimizedToDock from './modules/minimizedToDock.js';
 
@@ -13,18 +14,44 @@ export default class DDockPlusExtension extends Extension {
         try {
             this._settings = this.getSettings('org.gnome.shell.extensions.ddock-plus');
 
-            HideMinimizedWindows.enable();
-            MinimizedToDock.enable();
-
+            this._syncThumbnails();
+            this._syncMonitorSwitch();
             this._syncStacks();
 
             this._settingsSignal = this._settings.connect('changed', (settings, key) => {
                 if (key.includes('stack') || key.includes('view-mode') || key.includes('custom-folder')) {
                     this._syncStacks();
+                } else if (key === 'enable-minimized-thumbnails') {
+                    this._syncThumbnails();
+                } else if (key.includes('monitor-switch')) {
+                    this._syncMonitorSwitch();
                 }
             });
         } catch (e) {
             console.error(`[DDock-Plus] Error enabling extension: ${e}`);
+        }
+    }
+
+    _syncThumbnails() {
+        if (!this._settings) return;
+
+        if (this._settings.get_boolean('enable-minimized-thumbnails')) {
+            HideMinimizedWindows.enable();
+            MinimizedToDock.enable();
+        } else {
+            MinimizedToDock.disable();
+            HideMinimizedWindows.disable();
+        }
+    }
+
+    _syncMonitorSwitch() {
+        if (!this._settings) return;
+
+        if (this._settings.get_boolean('enable-dynamic-monitor-switch')) {
+            DynamicMonitorSwitch.disable();
+            DynamicMonitorSwitch.enable(this._settings);
+        } else {
+            DynamicMonitorSwitch.disable();
         }
     }
 
@@ -69,6 +96,7 @@ export default class DDockPlusExtension extends Extension {
             CustomFolderStack.disable();
             DocumentsStack.disable();
             DownloadsStack.disable();
+            DynamicMonitorSwitch.disable();
             MinimizedToDock.disable();
             HideMinimizedWindows.disable();
         } catch (e) {

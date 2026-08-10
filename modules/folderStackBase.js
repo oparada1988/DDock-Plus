@@ -424,7 +424,7 @@ export class FolderStackInstance {
             y -= Math.cos(angle * Math.PI / 180) * spacing;
             this._placeFanRow(row, x, y, angle);
             row.card = cards[index] ?? null;
-            row.start = cardStart(Math.min(index, Math.max(0, pile.depth - 1)));
+            row.start = cardStart();
             this._animateFanRowIn(row, index);
             angle += FAN_STEP;
         });
