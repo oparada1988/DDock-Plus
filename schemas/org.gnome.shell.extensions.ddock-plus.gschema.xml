@@ -47,7 +47,7 @@
       <description>Automatically move dock to monitor when cursor rests at display edge</description>
     </key>
     <key name="dynamic-monitor-switch-delay" type="d">
-      <default>0.8</default>
+      <default>2.3</default>
       <summary>Dynamic Monitor Switch Delay</summary>
       <description>Delay in seconds required at display edge before switching dock monitor</description>
     </key>

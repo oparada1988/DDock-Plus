@@ -153,6 +153,14 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
             title: 'Dynamic Monitor Switch',
             description: 'Automatically move dock to display when mouse cursor rests at display edge',
         });
+
+        const reqRow = new Adw.ActionRow({
+            title: 'Dash to Dock Requirement',
+            subtitle: 'Dash to Dock "Show on all monitors" must be enabled in Dash to Dock settings.',
+            icon_name: 'dialog-information-symbolic',
+        });
+        monitorGroup.add(reqRow);
+
         const monitorSwitch = new Adw.SwitchRow({
             title: 'Enable Dynamic Monitor Switch',
             subtitle: 'Move dock to display when mouse rests at screen edge',
@@ -170,7 +178,7 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
                 upper: 5.0,
                 step_increment: 0.1,
                 page_increment: 0.5,
-                value: settings.get_double('dynamic-monitor-switch-delay') || 0.8,
+                value: settings.get_double('dynamic-monitor-switch-delay') || 2.3,
             }),
             climb_rate: 0.1,
             digits: 1,
