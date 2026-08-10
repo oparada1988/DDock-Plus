@@ -32,10 +32,19 @@ export default class DDockPlusExtension extends Extension {
         }
     }
 
+    _safeGetBoolean(key, defaultValue = false) {
+        if (!this._settings) return defaultValue;
+        try {
+            return this._settings.get_boolean(key);
+        } catch (e) {
+            return defaultValue;
+        }
+    }
+
     _syncThumbnails() {
         if (!this._settings) return;
 
-        if (this._settings.get_boolean('enable-minimized-thumbnails')) {
+        if (this._safeGetBoolean('enable-minimized-thumbnails', true)) {
             HideMinimizedWindows.enable();
             MinimizedToDock.enable();
         } else {
@@ -47,7 +56,7 @@ export default class DDockPlusExtension extends Extension {
     _syncMonitorSwitch() {
         if (!this._settings) return;
 
-        if (this._settings.get_boolean('enable-dynamic-monitor-switch')) {
+        if (this._safeGetBoolean('enable-dynamic-monitor-switch', true)) {
             DynamicMonitorSwitch.disable();
             DynamicMonitorSwitch.enable(this._settings);
         } else {
@@ -59,7 +68,7 @@ export default class DDockPlusExtension extends Extension {
         if (!this._settings) return;
 
         // Downloads Stack
-        if (this._settings.get_boolean('enable-downloads-stack')) {
+        if (this._safeGetBoolean('enable-downloads-stack', true)) {
             DownloadsStack.disable();
             DownloadsStack.enable(msg => this.gettext(msg), this._settings);
         } else {
@@ -67,7 +76,7 @@ export default class DDockPlusExtension extends Extension {
         }
 
         // Documents Stack
-        if (this._settings.get_boolean('enable-documents-stack')) {
+        if (this._safeGetBoolean('enable-documents-stack', true)) {
             DocumentsStack.disable();
             DocumentsStack.enable(msg => this.gettext(msg), this._settings);
         } else {
@@ -75,7 +84,12 @@ export default class DDockPlusExtension extends Extension {
         }
 
         // Custom Folder Stack
-        if (this._settings.get_boolean('enable-custom-stack') && this._settings.get_string('custom-folder-path')) {
+        let customPath = '';
+        try {
+            customPath = this._settings.get_string('custom-folder-path');
+        } catch (e) {}
+
+        if (this._safeGetBoolean('enable-custom-stack', false) && customPath) {
             CustomFolderStack.disable();
             CustomFolderStack.enable(msg => this.gettext(msg), this._settings);
         } else {

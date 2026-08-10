@@ -25,11 +25,27 @@ function _resetDwellState() {
 }
 
 function _getCurrentDockMonitorIndex() {
+    const monitors = Main.layoutManager.monitors;
+    if (!monitors || monitors.length === 0)
+        return Main.layoutManager.primaryIndex;
+
     if (d2dSettings) {
+        try {
+            const connector = d2dSettings.get_string('preferred-monitor-by-connector');
+            if (connector) {
+                for (let i = 0; i < monitors.length; i++) {
+                    if (monitors[i].connector === connector)
+                        return i;
+                }
+            }
+        } catch (e) {
+            // connector key might not be available or set
+        }
+
         const pref = d2dSettings.get_int('preferred-monitor');
         if (pref === -2 || pref === -1)
             return Main.layoutManager.primaryIndex;
-        if (pref >= 0)
+        if (pref >= 0 && pref < monitors.length)
             return pref;
     }
     const containers = dockContainers();
@@ -76,7 +92,7 @@ function _checkCursorEdge() {
     let targetMonIndex = -1;
     for (let i = 0; i < monitors.length; i++) {
         const mon = monitors[i];
-        if (x >= mon.x && x < mon.x + mon.width && y >= mon.y && y < mon.y + mon.height) {
+        if (x >= mon.x && x <= mon.x + mon.width && y >= mon.y && y <= mon.y + mon.height) {
             targetMonIndex = i;
             break;
         }
@@ -96,7 +112,14 @@ function _checkCursorEdge() {
             dwellStartTime = GLib.get_monotonic_time();
         } else {
             const elapsed = (GLib.get_monotonic_time() - dwellStartTime) / 1000000.0;
-            const delaySec = settingsRef ? settingsRef.get_double('dynamic-monitor-switch-delay') : 0.8;
+            let delaySec = 0.8;
+            if (settingsRef) {
+                try {
+                    delaySec = settingsRef.get_double('dynamic-monitor-switch-delay');
+                } catch (e) {
+                    delaySec = 0.8;
+                }
+            }
             if (elapsed >= delaySec) {
                 _triggerMonitorSwitch(targetMonIndex);
                 _resetDwellState();
@@ -113,8 +136,18 @@ function _triggerMonitorSwitch(targetMonitorIndex) {
     isSwitching = true;
     console.log(`[DDock-Plus] Dynamic Monitor Switch triggered: moving dock to monitor ${targetMonitorIndex}`);
 
-    if (d2dSettings)
+    if (d2dSettings) {
         d2dSettings.set_int('preferred-monitor', targetMonitorIndex);
+        const monitors = Main.layoutManager.monitors;
+        if (monitors && monitors[targetMonitorIndex] && monitors[targetMonitorIndex].connector) {
+            try {
+                d2dSettings.set_string('preferred-monitor-by-connector', monitors[targetMonitorIndex].connector);
+                console.log(`[DDock-Plus] Set preferred-monitor-by-connector to ${monitors[targetMonitorIndex].connector}`);
+            } catch (e) {
+                console.warn(`[DDock-Plus] Failed setting preferred-monitor-by-connector: ${e}`);
+            }
+        }
+    }
 
     // Lock switching during reposition layout phase to avoid loop triggers
     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
@@ -154,4 +187,5 @@ export function disable() {
     settingsRef = null;
     d2dSettings = null;
 }
+
 
