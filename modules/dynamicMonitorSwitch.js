@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Dynamic Dock Monitor Switch for DDock-Plus
-// Automatically moves the dock to another monitor when mouse cursor dwells at display edge.
+// Multi-monitor approach: leverages Dash-to-Dock multi-monitor support to show the dock on the active monitor and hide it on inactive monitors.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -8,152 +8,93 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { dockContainers } from './dockUtils.js';
 
 const D2D_SCHEMA = 'org.gnome.shell.extensions.dash-to-dock';
-const EDGE_THRESHOLD = 16; // px threshold from monitor edge for reliable triggering
 
 let enabled = false;
 let settingsRef = null;
 let d2dSettings = null;
 let pollTimerId = 0;
 
-let dwellTargetMonitor = -1;
-let dwellStartTime = 0;
-let isSwitching = false;
+function _getContainerMonitorIndex(container) {
+    if (container._monitorIndex !== undefined && container._monitorIndex >= 0)
+        return container._monitorIndex;
+    if (container._slider && container._slider._monitorIndex !== undefined && container._slider._monitorIndex >= 0)
+        return container._slider._monitorIndex;
+    if (typeof container.get_monitor === 'function') {
+        try {
+            return container.get_monitor();
+        } catch (e) {}
+    }
 
-function _resetDwellState() {
-    dwellTargetMonitor = -1;
-    dwellStartTime = 0;
+    const monitors = Main.layoutManager.monitors;
+    if (monitors && monitors.length > 0) {
+        try {
+            const [cx, cy] = container.get_transformed_position();
+            for (let i = 0; i < monitors.length; i++) {
+                const m = monitors[i];
+                if (cx >= m.x && cx < m.x + m.width && cy >= m.y && cy < m.y + m.height)
+                    return i;
+            }
+        } catch (e) {}
+    }
+    return 0;
 }
 
-function _getCurrentDockMonitorIndex() {
-    const monitors = Main.layoutManager.monitors;
-    if (!monitors || monitors.length === 0)
-        return Main.layoutManager.primaryIndex;
-
+function _ensureMultiMonitorEnabled() {
     if (d2dSettings) {
         try {
-            const connector = d2dSettings.get_string('preferred-monitor-by-connector');
-            if (connector) {
-                for (let i = 0; i < monitors.length; i++) {
-                    if (monitors[i].connector === connector)
-                        return i;
-                }
+            if (!d2dSettings.get_boolean('multi-monitor')) {
+                console.log('[DDock-Plus] Enabling multi-monitor in Dash-to-Dock');
+                d2dSettings.set_boolean('multi-monitor', true);
             }
         } catch (e) {
-            // connector key might not be available or set
+            console.warn(`[DDock-Plus] Could not set multi-monitor setting in D2D: ${e}`);
         }
-
-        const pref = d2dSettings.get_int('preferred-monitor');
-        if (pref === -2 || pref === -1)
-            return Main.layoutManager.primaryIndex;
-        if (pref >= 0 && pref < monitors.length)
-            return pref;
-    }
-    const containers = dockContainers();
-    if (containers.length > 0) {
-        const container = containers[0];
-        if (container._monitorIndex !== undefined && container._monitorIndex >= 0)
-            return container._monitorIndex;
-        if (typeof container.get_monitor === 'function')
-            return container.get_monitor();
-    }
-
-    return Main.layoutManager.primaryIndex;
-}
-
-function _isCursorAtDockEdge(mon, x, y, dockPos) {
-    const pos = (dockPos || 'BOTTOM').toUpperCase();
-    switch (pos) {
-    case 'TOP':
-        return y <= mon.y + EDGE_THRESHOLD;
-    case 'LEFT':
-        return x <= mon.x + EDGE_THRESHOLD;
-    case 'RIGHT':
-        return x >= mon.x + mon.width - EDGE_THRESHOLD;
-    case 'BOTTOM':
-    default:
-        return y >= mon.y + mon.height - EDGE_THRESHOLD;
     }
 }
 
-function _checkCursorEdge() {
-    if (isSwitching || !enabled)
-        return GLib.SOURCE_CONTINUE;
-
-    if (d2dSettings && d2dSettings.get_boolean('multi-monitor'))
+function _updateDockVisibility() {
+    if (!enabled)
         return GLib.SOURCE_CONTINUE;
 
     const monitors = Main.layoutManager.monitors;
-    if (!monitors || monitors.length <= 1)
+    if (!monitors || monitors.length <= 1) {
+        // Single monitor setup: keep containers visible
+        const containers = dockContainers();
+        for (const container of containers) {
+            if (!container.visible)
+                container.visible = true;
+        }
         return GLib.SOURCE_CONTINUE;
+    }
 
     const [x, y] = global.get_pointer();
-    const currentDockMon = _getCurrentDockMonitorIndex();
-
-    let targetMonIndex = -1;
+    let currentMonitor = -1;
     for (let i = 0; i < monitors.length; i++) {
         const mon = monitors[i];
-        if (x >= mon.x && x <= mon.x + mon.width && y >= mon.y && y <= mon.y + mon.height) {
-            targetMonIndex = i;
+        if (x >= mon.x && x < mon.x + mon.width && y >= mon.y && y < mon.y + mon.height) {
+            currentMonitor = i;
             break;
         }
     }
 
-    if (targetMonIndex < 0 || targetMonIndex === currentDockMon) {
-        _resetDwellState();
+    if (currentMonitor < 0)
         return GLib.SOURCE_CONTINUE;
-    }
 
-    const mon = monitors[targetMonIndex];
-    const dockPos = d2dSettings ? (d2dSettings.get_string('dock-position') || 'BOTTOM') : 'BOTTOM';
+    const containers = dockContainers();
+    if (containers.length === 0)
+        return GLib.SOURCE_CONTINUE;
 
-    if (_isCursorAtDockEdge(mon, x, y, dockPos)) {
-        if (dwellTargetMonitor !== targetMonIndex) {
-            dwellTargetMonitor = targetMonIndex;
-            dwellStartTime = GLib.get_monotonic_time();
-        } else {
-            const elapsed = (GLib.get_monotonic_time() - dwellStartTime) / 1000000.0;
-            let delaySec = 0.8;
-            if (settingsRef) {
-                try {
-                    delaySec = settingsRef.get_double('dynamic-monitor-switch-delay');
-                } catch (e) {
-                    delaySec = 0.8;
-                }
-            }
-            if (elapsed >= delaySec) {
-                _triggerMonitorSwitch(targetMonIndex);
-                _resetDwellState();
-            }
+    for (const container of containers) {
+        const monIdx = _getContainerMonitorIndex(container);
+        const shouldBeVisible = (monIdx === currentMonitor);
+
+        if (container.visible !== shouldBeVisible) {
+            container.visible = shouldBeVisible;
+            console.log(`[DDock-Plus] Dock container monitor ${monIdx} set visible=${shouldBeVisible}`);
         }
-    } else {
-        _resetDwellState();
     }
 
     return GLib.SOURCE_CONTINUE;
-}
-
-function _triggerMonitorSwitch(targetMonitorIndex) {
-    isSwitching = true;
-    console.log(`[DDock-Plus] Dynamic Monitor Switch triggered: moving dock to monitor ${targetMonitorIndex}`);
-
-    if (d2dSettings) {
-        d2dSettings.set_int('preferred-monitor', targetMonitorIndex);
-        const monitors = Main.layoutManager.monitors;
-        if (monitors && monitors[targetMonitorIndex] && monitors[targetMonitorIndex].connector) {
-            try {
-                d2dSettings.set_string('preferred-monitor-by-connector', monitors[targetMonitorIndex].connector);
-                console.log(`[DDock-Plus] Set preferred-monitor-by-connector to ${monitors[targetMonitorIndex].connector}`);
-            } catch (e) {
-                console.warn(`[DDock-Plus] Failed setting preferred-monitor-by-connector: ${e}`);
-            }
-        }
-    }
-
-    // Lock switching during reposition layout phase to avoid loop triggers
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
-        isSwitching = false;
-        return GLib.SOURCE_REMOVE;
-    });
 }
 
 export function enable(settings) {
@@ -170,7 +111,11 @@ export function enable(settings) {
         d2dSettings = null;
     }
 
-    pollTimerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, _checkCursorEdge);
+    _ensureMultiMonitorEnabled();
+    _updateDockVisibility();
+
+    pollTimerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, _updateDockVisibility);
+    console.log('[DDock-Plus] Dynamic Monitor Switch (Multi-Dock Active Monitor Mode) enabled');
 }
 
 export function disable() {
@@ -182,10 +127,20 @@ export function disable() {
         GLib.source_remove(pollTimerId);
         pollTimerId = 0;
     }
-    _resetDwellState();
-    isSwitching = false;
+
+    try {
+        const containers = dockContainers();
+        for (const container of containers) {
+            container.visible = true;
+        }
+    } catch (e) {
+        console.warn(`[DDock-Plus] Error restoring dock visibility on disable: ${e}`);
+    }
+
     settingsRef = null;
     d2dSettings = null;
+    console.log('[DDock-Plus] Dynamic Monitor Switch disabled');
 }
+
 
 
