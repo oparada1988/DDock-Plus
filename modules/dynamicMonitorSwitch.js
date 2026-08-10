@@ -22,13 +22,41 @@ let pendingMonitorIndex = -1;
 let hoverStartTimeMs = 0;
 
 function _getContainerMonitorIndex(container) {
-    if (container._monitorIndex !== undefined && container._monitorIndex >= 0)
+    if (!container) return 0;
+
+    // Check GObject property and property variants on DashToDock container
+    if (typeof container.monitorIndex === 'number' && container.monitorIndex >= 0)
+        return container.monitorIndex;
+    if (typeof container.monitor_index === 'number' && container.monitor_index >= 0)
+        return container.monitor_index;
+    if (typeof container._monitorIndex === 'number' && container._monitorIndex >= 0)
         return container._monitorIndex;
-    if (container._slider && container._slider._monitorIndex !== undefined && container._slider._monitorIndex >= 0)
-        return container._slider._monitorIndex;
+
+    // Check child slider / dock objects if present
+    if (container._slider) {
+        if (typeof container._slider.monitorIndex === 'number' && container._slider.monitorIndex >= 0)
+            return container._slider.monitorIndex;
+        if (typeof container._slider._monitorIndex === 'number' && container._slider._monitorIndex >= 0)
+            return container._slider._monitorIndex;
+    }
+    if (container._dock) {
+        if (typeof container._dock.monitorIndex === 'number' && container._dock.monitorIndex >= 0)
+            return container._dock.monitorIndex;
+        if (typeof container._dock._monitorIndex === 'number' && container._dock._monitorIndex >= 0)
+            return container._dock._monitorIndex;
+    }
+
     if (typeof container.get_monitor === 'function') {
         try {
-            return container.get_monitor();
+            const m = container.get_monitor();
+            if (typeof m === 'number' && m >= 0) return m;
+        } catch (e) {}
+    }
+
+    if (typeof Main.layoutManager.findIndexForActor === 'function') {
+        try {
+            const idx = Main.layoutManager.findIndexForActor(container);
+            if (typeof idx === 'number' && idx >= 0) return idx;
         } catch (e) {}
     }
 
@@ -102,8 +130,13 @@ function _animateContainerHide(container) {
     });
 }
 
-function _switchToMonitor(targetMonitorIndex) {
-    if (currentActiveMonitor === targetMonitorIndex) return;
+function _switchToMonitor(targetMonitorIndex, force = false) {
+    if (!force && currentActiveMonitor === targetMonitorIndex) {
+        const containers = dockContainers();
+        const targetContainer = containers.find(c => _getContainerMonitorIndex(c) === targetMonitorIndex);
+        if (targetContainer && targetContainer.visible)
+            return;
+    }
 
     console.log(`[DDock-Plus] Switching active dock monitor to ${targetMonitorIndex} (was ${currentActiveMonitor})`);
     currentActiveMonitor = targetMonitorIndex;
@@ -165,13 +198,18 @@ function _updateDockVisibility() {
     // Initialize active monitor on first check
     if (currentActiveMonitor < 0) {
         currentActiveMonitor = currentMonitor;
-        _switchToMonitor(currentMonitor);
+        _switchToMonitor(currentMonitor, true);
         return GLib.SOURCE_CONTINUE;
     }
 
-    // If pointer is on current active monitor, reset pending
+    // If pointer is on current active monitor, reset pending & ensure active container is visible
     if (currentMonitor === currentActiveMonitor) {
         pendingMonitorIndex = -1;
+        const containers = dockContainers();
+        const activeContainer = containers.find(c => _getContainerMonitorIndex(c) === currentActiveMonitor);
+        if (activeContainer && !activeContainer.visible) {
+            _animateContainerShow(activeContainer);
+        }
         return GLib.SOURCE_CONTINUE;
     }
 
@@ -179,11 +217,11 @@ function _updateDockVisibility() {
     // 1) Instant trigger if pressing cursor at very bottom edge
     if (isAtVeryEdge) {
         pendingMonitorIndex = -1;
-        _switchToMonitor(currentMonitor);
+        _switchToMonitor(currentMonitor, true);
         return GLib.SOURCE_CONTINUE;
     }
 
-    // 2) 2.3 second delay trigger if cursor is in bottom edge region
+    // 2) Delay trigger if cursor is in bottom edge region
     if (isAtBottomEdge) {
         let delaySec = DEFAULT_DELAY_SEC;
         if (settingsRef) {
@@ -199,7 +237,7 @@ function _updateDockVisibility() {
             hoverStartTimeMs = nowMs;
         } else if (nowMs - hoverStartTimeMs >= delayMs) {
             pendingMonitorIndex = -1;
-            _switchToMonitor(currentMonitor);
+            _switchToMonitor(currentMonitor, true);
         }
     } else {
         // Cursor moved out of bottom edge region on target monitor
@@ -264,7 +302,3 @@ export function disable() {
     pendingMonitorIndex = -1;
     console.log('[DDock-Plus] Dynamic Monitor Switch disabled');
 }
-
-
-
-
