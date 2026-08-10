@@ -1,0 +1,201 @@
+/* DDock-Plus Stylesheet */
+
+/*###############################################*/
+/*        Minimized Windows in the Dock         */
+/*###############################################*/
+
+#kiwi-minimized-strip {
+  spacing: 2px;
+  padding: 0 3px;
+}
+
+#dashtodockContainer.left #kiwi-minimized-strip,
+#dashtodockContainer.right #kiwi-minimized-strip {
+  padding: 3px 0;
+}
+
+.kiwi-minimized-tile {
+  padding: 6px 2px;
+}
+
+#dashtodockContainer.left .kiwi-minimized-tile,
+#dashtodockContainer.right .kiwi-minimized-tile {
+  padding: 2px 6px;
+}
+
+/*###############################################*/
+/*             Folder Stacks in Dock             */
+/*###############################################*/
+
+.kiwi-downloads-item,
+.kiwi-documents-item,
+.kiwi-customfolder-item {
+  padding: 6px 2px;
+}
+
+#dashtodockContainer.left .kiwi-downloads-item,
+#dashtodockContainer.right .kiwi-downloads-item,
+#dashtodockContainer.left .kiwi-documents-item,
+#dashtodockContainer.right .kiwi-documents-item,
+#dashtodockContainer.left .kiwi-customfolder-item,
+#dashtodockContainer.right .kiwi-customfolder-item {
+  padding: 2px 6px;
+}
+
+.kiwi-fan-label {
+  background-color: rgba(238, 238, 238, 0.85);
+  color: #1c1c1c;
+  border-radius: 99px;
+  padding: 5px 13px;
+  font-weight: 500;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.35);
+}
+
+.kiwi-fan-label.dark {
+  background-color: rgba(46, 46, 46, 0.85);
+  color: #f2f2f2;
+}
+
+.kiwi-fan-icon {
+  padding: 2px;
+}
+
+.kiwi-fan-file-icon {
+  icon-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+}
+
+.kiwi-fan-thumbnail {
+  background-color: #ffffff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+}
+
+.kiwi-fan-more-row {
+  spacing: 8px;
+}
+
+.kiwi-fan-more {
+  background-color: rgba(238, 238, 238, 0.94);
+  border-radius: 99px;
+  padding: 7px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+.kiwi-fan-more:hover,
+.kiwi-fan-more:focus {
+  background-color: #ffffff;
+}
+
+.kiwi-fan-more-icon {
+  color: #1c1c1c;
+}
+
+.kiwi-fan-more.dark {
+  background-color: rgba(46, 46, 46, 0.94);
+}
+
+.kiwi-fan-more.dark .kiwi-fan-more-icon {
+  color: #f2f2f2;
+}
+
+.kiwi-downloads-stack .kiwi-fan-thumbnail {
+  box-shadow: none;
+}
+
+.kiwi-downloads-stack .kiwi-fan-file-icon {
+  icon-shadow: none;
+}
+
+/*###############################################*/
+/*             4x6 Grid View Popup               */
+/*###############################################*/
+
+.kiwi-grid-popup {
+  background-color: rgba(246, 246, 246, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  spacing: 8px;
+}
+
+.kiwi-grid-popup.dark {
+  background-color: rgba(30, 30, 30, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.kiwi-grid-header {
+  padding: 4px 8px;
+}
+
+.kiwi-grid-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1c1c1c;
+}
+
+.kiwi-grid-popup.dark .kiwi-grid-title {
+  color: #f2f2f2;
+}
+
+.kiwi-grid-container {
+  spacing: 6px;
+}
+
+.kiwi-grid-row {
+  spacing: 6px;
+}
+
+.kiwi-grid-tile {
+  padding: 6px;
+  border-radius: 10px;
+  background-color: transparent;
+  transition: background-color 150ms ease;
+  width: 76px;
+}
+
+.kiwi-grid-tile:hover,
+.kiwi-grid-tile:focus {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.kiwi-grid-popup.dark .kiwi-grid-tile:hover,
+.kiwi-grid-popup.dark .kiwi-grid-tile:focus {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.kiwi-grid-thumbnail {
+  margin-bottom: 4px;
+}
+
+.kiwi-grid-label {
+  font-size: 11px;
+  color: #2e2e2e;
+  text-align: center;
+}
+
+.kiwi-grid-popup.dark .kiwi-grid-label {
+  color: #e0e0e0;
+}
+
+.kiwi-grid-footer-button {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1c1c1c;
+}
+
+.kiwi-grid-footer-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.kiwi-grid-popup.dark .kiwi-grid-footer-button {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #f2f2f2;
+}
+
+.kiwi-grid-popup.dark .kiwi-grid-footer-button:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+}

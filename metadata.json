@@ -1,0 +1,15 @@
+{
+  "uuid": "ddock-plus@oparada1988.github.com",
+  "name": "DDock-Plus",
+  "description": "Enhanced Dock experience for GNOME Shell featuring macOS dock zoom, window minimization, folders, and monitor switching.",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
+  "url": "https://github.com/oparada1988/DDock-Plus",
+  "version": 4
+}

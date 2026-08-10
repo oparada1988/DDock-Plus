@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.ddock-plus" path="/org/gnome/shell/extensions/ddock-plus/">
+    <key name="enable-downloads-stack" type="b">
+      <default>true</default>
+      <summary>Enable Downloads Stack</summary>
+      <description>Show Downloads folder stack in dock</description>
+    </key>
+    <key name="downloads-view-mode" type="s">
+      <default>'list'</default>
+      <summary>Downloads View Mode</summary>
+      <description>View mode for Downloads stack: 'list' (fan) or 'grid' (4x6 grid)</description>
+    </key>
+    <key name="enable-documents-stack" type="b">
+      <default>true</default>
+      <summary>Enable Documents Stack</summary>
+      <description>Show Documents folder stack in dock</description>
+    </key>
+    <key name="documents-view-mode" type="s">
+      <default>'list'</default>
+      <summary>Documents View Mode</summary>
+      <description>View mode for Documents stack: 'list' (fan) or 'grid' (4x6 grid)</description>
+    </key>
+    <key name="enable-custom-stack" type="b">
+      <default>false</default>
+      <summary>Enable Custom Folder Stack</summary>
+      <description>Show user-specified custom folder stack in dock</description>
+    </key>
+    <key name="custom-folder-path" type="s">
+      <default>''</default>
+      <summary>Custom Folder Path</summary>
+      <description>Path to the custom directory for stack</description>
+    </key>
+    <key name="custom-folder-view-mode" type="s">
+      <default>'grid'</default>
+      <summary>Custom Folder View Mode</summary>
+      <description>View mode for Custom Folder stack: 'list' (fan) or 'grid' (4x6 grid)</description>
+    </key>
+  </schema>
+</schemalist>
