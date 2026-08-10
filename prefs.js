@@ -318,7 +318,7 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
             scale.set_draw_value(true);
             scale.set_value_pos(Gtk.PositionType.RIGHT);
             scale.set_value(initialValue);
-            scale.set_width_request(160);
+            scale.set_size_request(160, -1);
 
             const plusBtn = new Gtk.Button({
                 icon_name: 'list-add-symbolic',
