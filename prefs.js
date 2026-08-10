@@ -166,13 +166,13 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
         });
         const spinBtn = new Gtk.SpinButton({
             adjustment: new Gtk.Adjustment({
-                lower: 0.5,
-                upper: 10.0,
-                step_increment: 0.5,
-                page_increment: 1.0,
-                value: settings.get_double('dynamic-monitor-switch-delay') || 2.5,
+                lower: 0.2,
+                upper: 5.0,
+                step_increment: 0.1,
+                page_increment: 0.5,
+                value: settings.get_double('dynamic-monitor-switch-delay') || 0.8,
             }),
-            climb_rate: 0.5,
+            climb_rate: 0.1,
             digits: 1,
             valign: Gtk.Align.CENTER,
         });

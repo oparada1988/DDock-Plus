@@ -8,7 +8,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { dockContainers } from './dockUtils.js';
 
 const D2D_SCHEMA = 'org.gnome.shell.extensions.dash-to-dock';
-const EDGE_THRESHOLD = 8; // px threshold from monitor edge
+const EDGE_THRESHOLD = 16; // px threshold from monitor edge for reliable triggering
 
 let enabled = false;
 let settingsRef = null;
@@ -27,18 +27,26 @@ function _resetDwellState() {
 function _getCurrentDockMonitorIndex() {
     if (d2dSettings) {
         const pref = d2dSettings.get_int('preferred-monitor');
+        if (pref === -2 || pref === -1)
+            return Main.layoutManager.primaryIndex;
         if (pref >= 0)
             return pref;
     }
     const containers = dockContainers();
-    if (containers.length > 0 && containers[0]._monitorIndex !== undefined)
-        return containers[0]._monitorIndex;
+    if (containers.length > 0) {
+        const container = containers[0];
+        if (container._monitorIndex !== undefined && container._monitorIndex >= 0)
+            return container._monitorIndex;
+        if (typeof container.get_monitor === 'function')
+            return container.get_monitor();
+    }
 
     return Main.layoutManager.primaryIndex;
 }
 
 function _isCursorAtDockEdge(mon, x, y, dockPos) {
-    switch (dockPos) {
+    const pos = (dockPos || 'BOTTOM').toUpperCase();
+    switch (pos) {
     case 'TOP':
         return y <= mon.y + EDGE_THRESHOLD;
     case 'LEFT':
@@ -53,6 +61,9 @@ function _isCursorAtDockEdge(mon, x, y, dockPos) {
 
 function _checkCursorEdge() {
     if (isSwitching || !enabled)
+        return GLib.SOURCE_CONTINUE;
+
+    if (d2dSettings && d2dSettings.get_boolean('multi-monitor'))
         return GLib.SOURCE_CONTINUE;
 
     const monitors = Main.layoutManager.monitors;
@@ -85,7 +96,7 @@ function _checkCursorEdge() {
             dwellStartTime = GLib.get_monotonic_time();
         } else {
             const elapsed = (GLib.get_monotonic_time() - dwellStartTime) / 1000000.0;
-            const delaySec = settingsRef ? settingsRef.get_double('dynamic-monitor-switch-delay') : 2.5;
+            const delaySec = settingsRef ? settingsRef.get_double('dynamic-monitor-switch-delay') : 0.8;
             if (elapsed >= delaySec) {
                 _triggerMonitorSwitch(targetMonIndex);
                 _resetDwellState();
@@ -102,41 +113,14 @@ function _triggerMonitorSwitch(targetMonitorIndex) {
     isSwitching = true;
     console.log(`[DDock-Plus] Dynamic Monitor Switch triggered: moving dock to monitor ${targetMonitorIndex}`);
 
-    const containers = dockContainers();
-    const currentContainer = containers.length > 0 ? containers[0] : null;
-    const slider = currentContainer?._slider ?? null;
+    if (d2dSettings)
+        d2dSettings.set_int('preferred-monitor', targetMonitorIndex);
 
-    if (slider && typeof slider._animateOut === 'function') {
-        // Step 1: Slide out (autohide animation)
-        slider._animateOut(0.3, 0);
-
-        // Step 2: After slide out completes, change monitor setting
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 350, () => {
-            if (d2dSettings)
-                d2dSettings.set_int('preferred-monitor', targetMonitorIndex);
-
-            // Step 3: Allow Dash-to-Dock to reposition and slide back in (unhide animation)
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
-                const newContainers = dockContainers();
-                const newSlider = newContainers.length > 0 ? newContainers[0]._slider : null;
-                if (newSlider && typeof newSlider._animateIn === 'function')
-                    newSlider._animateIn(0.3, 0);
-
-                isSwitching = false;
-                return GLib.SOURCE_REMOVE;
-            });
-            return GLib.SOURCE_REMOVE;
-        });
-    } else {
-        // Direct fallback switch
-        if (d2dSettings)
-            d2dSettings.set_int('preferred-monitor', targetMonitorIndex);
-
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
-            isSwitching = false;
-            return GLib.SOURCE_REMOVE;
-        });
-    }
+    // Lock switching during reposition layout phase to avoid loop triggers
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
+        isSwitching = false;
+        return GLib.SOURCE_REMOVE;
+    });
 }
 
 export function enable(settings) {
@@ -170,3 +154,4 @@ export function disable() {
     settingsRef = null;
     d2dSettings = null;
 }
+
