@@ -31,6 +31,11 @@
       <summary>Custom Folder Path</summary>
       <description>Path to the custom directory for stack</description>
     </key>
+    <key name="custom-folder-icon" type="s">
+      <default>'folder'</default>
+      <summary>Custom Folder Icon</summary>
+      <description>System icon name or image file path for Custom Folder stack icon</description>
+    </key>
     <key name="custom-folder-view-mode" type="s">
       <default>'grid'</default>
       <summary>Custom Folder View Mode</summary>
@@ -40,16 +45,6 @@
       <default>true</default>
       <summary>Enable Minimized Window Thumbnails</summary>
       <description>Park thumbnails of minimized windows on the dock</description>
-    </key>
-    <key name="enable-dynamic-monitor-switch" type="b">
-      <default>true</default>
-      <summary>Enable Dynamic Monitor Switch</summary>
-      <description>Automatically move dock to monitor when cursor rests at display edge</description>
-    </key>
-    <key name="dynamic-monitor-switch-delay" type="d">
-      <default>2.3</default>
-      <summary>Dynamic Monitor Switch Delay</summary>
-      <description>Delay in seconds required at display edge before switching dock monitor</description>
     </key>
   </schema>
 </schemalist>

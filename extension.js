@@ -3,7 +3,6 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as CustomFolderStack from './modules/customfolderStack.js';
 import * as DocumentsStack from './modules/documentsStack.js';
 import * as DownloadsStack from './modules/downloadsStack.js';
-import * as DynamicMonitorSwitch from './modules/dynamicMonitorSwitch.js';
 import * as HideMinimizedWindows from './modules/hideMinimizedWindows.js';
 import * as MinimizedToDock from './modules/minimizedToDock.js';
 
@@ -15,7 +14,6 @@ export default class DDockPlusExtension extends Extension {
             this._settings = this.getSettings('org.gnome.shell.extensions.ddock-plus');
 
             this._syncThumbnails();
-            this._syncMonitorSwitch();
             this._syncStacks();
 
             this._settingsSignal = this._settings.connect('changed', (settings, key) => {
@@ -23,8 +21,6 @@ export default class DDockPlusExtension extends Extension {
                     this._syncStacks();
                 } else if (key === 'enable-minimized-thumbnails') {
                     this._syncThumbnails();
-                } else if (key.includes('monitor-switch')) {
-                    this._syncMonitorSwitch();
                 }
             });
         } catch (e) {
@@ -50,17 +46,6 @@ export default class DDockPlusExtension extends Extension {
         } else {
             MinimizedToDock.disable();
             HideMinimizedWindows.disable();
-        }
-    }
-
-    _syncMonitorSwitch() {
-        if (!this._settings) return;
-
-        if (this._safeGetBoolean('enable-dynamic-monitor-switch', true)) {
-            DynamicMonitorSwitch.disable();
-            DynamicMonitorSwitch.enable(this._settings);
-        } else {
-            DynamicMonitorSwitch.disable();
         }
     }
 
@@ -110,7 +95,6 @@ export default class DDockPlusExtension extends Extension {
             CustomFolderStack.disable();
             DocumentsStack.disable();
             DownloadsStack.disable();
-            DynamicMonitorSwitch.disable();
             MinimizedToDock.disable();
             HideMinimizedWindows.disable();
         } catch (e) {
@@ -118,3 +102,4 @@ export default class DDockPlusExtension extends Extension {
         }
     }
 }
+

@@ -24,6 +24,14 @@ export function enable(gettext = (msg => msg), settings = null) {
             return file.get_basename() || gettext('Custom Folder');
         },
         iconName: 'folder',
+        getIconName: () => {
+            if (!settings) return 'folder';
+            try {
+                return settings.get_string('custom-folder-icon') || 'folder';
+            } catch (e) {
+                return 'folder';
+            }
+        },
         stripName: 'kiwi-customfolder-strip',
         buttonClass: 'kiwi-customfolder-item',
         getViewMode: () => (settings ? settings.get_string('custom-folder-view-mode') : 'grid'),

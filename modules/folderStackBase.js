@@ -104,6 +104,7 @@ export class FolderStackInstance {
         this.getFolderFile = options.getFolderFile;
         this.getTitle = options.getTitle;
         this.iconName = options.iconName || 'folder';
+        this.getIconName = options.getIconName || (() => this.iconName);
         this.stripName = options.stripName || 'kiwi-folder-strip';
         this.buttonClass = options.buttonClass || 'kiwi-downloads-item';
         this.getViewMode = options.getViewMode || (() => 'list');
@@ -149,44 +150,54 @@ export class FolderStackInstance {
 
         this.closePopup();
 
-        disconnectAll(this.globalSignals);
+        for (const [target, id] of this.globalSignals) {
+            try {
+                target.disconnect(id);
+            } catch (e) {}
+        }
         this.globalSignals = [];
 
-        [...this.docks].forEach(info => this._detachDock(info));
+        if (this.folderMonitor) {
+            try {
+                this.folderMonitor.cancel();
+            } catch (e) {}
+            this.folderMonitor = null;
+        }
 
-        this.folderMonitor?.cancel();
-        this.folderMonitor = null;
+        for (const info of this.docks) {
+            disconnectAll(info.signals);
+            if (info.item) {
+                try {
+                    info.item.destroy();
+                } catch (e) {}
+            }
+        }
+        this.docks = [];
         this.recent = [];
         this.recentCount = 0;
         this.recentKey = '';
     }
 
     reloadFolder() {
-        if (!this.enabled) return;
-        this._setupMonitor();
         this._refresh();
     }
 
-    _setupMonitor() {
-        this.folderMonitor?.cancel();
-        this.folderMonitor = null;
+    /* ------------------------------------------------------------- Monitored Folder */
 
-        const folder = this.getFolderFile();
-        if (!folder || !folder.query_exists(null))
-            return;
+    _setupMonitor() {
+        const file = typeof this.getFolderFile === 'function' ? this.getFolderFile() : null;
+        if (!file) return;
 
         try {
-            this.folderMonitor = folder.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
-            const changedId = this.folderMonitor.connect('changed', () => this._queueRefresh());
-            this.globalSignals.push([this.folderMonitor, changedId]);
+            this.folderMonitor = file.monitor_directory(Gio.FileMonitorFlags.NONE, null);
+            this.folderMonitor.connect('changed', () => this._queueRefresh());
         } catch (e) {
-            console.error(`[DDock-Plus] Error monitoring folder: ${e}`);
+            console.error(`[DDock-Plus] Failed to monitor folder: ${e}`);
         }
     }
 
     _queueRefresh() {
-        if (this.sources.refresh)
-            GLib.Source.remove(this.sources.refresh);
+        if (this.sources.refresh || !this.enabled) return;
         this.sources.refresh = GLib.timeout_add(GLib.PRIORITY_DEFAULT, REFRESH_DELAY, () => {
             this.sources.refresh = 0;
             this._refresh();
@@ -195,67 +206,76 @@ export class FolderStackInstance {
     }
 
     _refresh() {
-        const folder = this.getFolderFile();
-        if (!folder || !folder.query_exists(null)) {
+        const file = typeof this.getFolderFile === 'function' ? this.getFolderFile() : null;
+        if (!file || !file.query_exists(null)) {
             this.recent = [];
             this.recentCount = 0;
-            this.recentKey = '';
-            this.docks.forEach(info => this._syncButton(info));
+            this._updatePile();
             return;
         }
 
-        this._listFolderFiles(folder, files => {
-            if (!this.enabled) return;
-            const maxNeeded = Math.max(MAX_FAN_ROWS, MAX_GRID_ITEMS);
-            this.recent = files.slice(0, maxNeeded);
-            this.recentCount = files.length;
-
-            const key = `${this.recentCount}:${this.recent.map(info => [
-                info.get_name(),
-                _modified(info),
-                info.get_attribute_byte_string('thumbnail::path') ?? '',
-            ].join('@')).join('|')}`;
-
-            if (key === this.recentKey) return;
-            this.recentKey = key;
-
-            this.docks.forEach(info => this._syncButton(info));
-        });
-    }
-
-    _listFolderFiles(folder, callback) {
-        folder.enumerate_children_async(
-            LIST_ATTRIBUTES, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null,
-            (source, result) => {
-                let enumerator = null;
+        file.enumerate_children_async(
+            LIST_ATTRIBUTES,
+            Gio.FileQueryInfoFlags.NONE,
+            GLib.PRIORITY_DEFAULT,
+            null,
+            (src, res) => {
+                let enumerator;
                 try {
-                    enumerator = source.enumerate_children_finish(result);
-                } catch (_) {}
-                if (enumerator)
-                    this._readBatch(enumerator, [], callback);
-                else
-                    callback([]);
-            });
-    }
-
-    _readBatch(enumerator, found, callback) {
-        enumerator.next_files_async(LIST_BATCH, GLib.PRIORITY_DEFAULT, null,
-            (source, result) => {
-                let infos = [];
-                try {
-                    infos = source.next_files_finish(result);
-                } catch (_) {
-                    infos = [];
+                    enumerator = src.enumerate_children_finish(res);
+                } catch (e) {
+                    console.error(`[DDock-Plus] Error enumerating folder: ${e}`);
+                    return;
                 }
 
-                if (infos.length === 0) {
-                    source.close_async(GLib.PRIORITY_DEFAULT, null, null);
+                this._readBatch(enumerator, [], found => {
                     found.sort((a, b) => _modified(b) - _modified(a));
+                    const nextKey = found.slice(0, MAX_FAN_ROWS)
+                        .map(i => `${i.get_name()}:${_modified(i)}`).join(';');
+
+                    if (nextKey === this.recentKey)
+                        return;
+
+                    this.recent = found;
+                    this.recentCount = found.length;
+                    this.recentKey = nextKey;
+                    this._updatePile();
+
+                    if (this.activePopup?.info) {
+                        const { type, info } = this.activePopup;
+                        this.closePopup();
+                        if (type === 'grid') {
+                            this._showGrid(info);
+                        } else {
+                            this._showFan(info);
+                        }
+                    }
+                });
+            }
+        );
+    }
+
+    _readBatch(source, found, callback) {
+        source.next_files_async(
+            LIST_BATCH,
+            GLib.PRIORITY_DEFAULT,
+            null,
+            (src, res) => {
+                let files;
+                try {
+                    files = src.next_files_finish(res);
+                } catch (e) {
                     callback(found);
                     return;
                 }
 
-                for (const info of infos) {
+                if (!files || files.length === 0) {
+                    source.close(null, null);
+                    callback(found);
+                    return;
+                }
+
+                for (const info of files) {
                     if (!info.get_is_hidden() && !info.get_is_backup())
                         found.push(info);
                 }
@@ -284,8 +304,16 @@ export class FolderStackInstance {
             height: Math.round(dash.iconSize * scale),
         });
 
+        const iconStr = typeof this.getIconName === 'function' ? this.getIconName() : (this.iconName || 'folder');
+        let gicon;
+        try {
+            gicon = Gio.Icon.new_for_string(iconStr);
+        } catch (e) {
+            gicon = new Gio.ThemedIcon({ name: iconStr || 'folder' });
+        }
+
         box.add_child(new St.Icon({
-            gicon: new Gio.ThemedIcon({ name: this.iconName }),
+            gicon: gicon,
             icon_size: dash.iconSize,
         }));
 
