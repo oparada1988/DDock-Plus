@@ -5,6 +5,7 @@ import * as DocumentsStack from './modules/documentsStack.js';
 import * as DownloadsStack from './modules/downloadsStack.js';
 import * as HideMinimizedWindows from './modules/hideMinimizedWindows.js';
 import * as MinimizedToDock from './modules/minimizedToDock.js';
+import * as DockOutline from './modules/dockOutline.js';
 
 export default class DDockPlusExtension extends Extension {
     enable() {
@@ -15,6 +16,7 @@ export default class DDockPlusExtension extends Extension {
 
             this._syncThumbnails();
             this._syncStacks();
+            DockOutline.enable(this._settings);
 
             this._settingsSignal = this._settings.connect('changed', (settings, key) => {
                 if (key.includes('stack') || key.includes('view-mode') || key.includes('custom-folder')) {
@@ -97,6 +99,7 @@ export default class DDockPlusExtension extends Extension {
             DownloadsStack.disable();
             MinimizedToDock.disable();
             HideMinimizedWindows.disable();
+            DockOutline.disable();
         } catch (e) {
             console.error(`[DDock-Plus] Error disabling extension: ${e}`);
         }

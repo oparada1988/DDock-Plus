@@ -288,6 +288,150 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
         thumbnailsGroup.add(thumbnailsSwitch);
         page.add(thumbnailsGroup);
 
+        // ------------------------------------------------------------- Dock Outline & Style
+        const outlineGroup = new Adw.PreferencesGroup({
+            title: 'Dock Outline & Style',
+            description: 'Add and customize a border outline around the dock',
+        });
+
+        const outlineSwitch = new Adw.SwitchRow({
+            title: 'Enable Dock Outline',
+            subtitle: 'Show border outline around the dock container',
+        });
+        settings.bind('enable-dock-outline', outlineSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+        outlineGroup.add(outlineSwitch);
+
+        // Width scale (0px to 5px)
+        const widthScale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 5, 1);
+        widthScale.set_draw_value(true);
+        widthScale.set_value_pos(Gtk.PositionType.RIGHT);
+        widthScale.set_value(settings.get_int('dock-outline-width'));
+        widthScale.connect('value-changed', () => {
+            settings.set_int('dock-outline-width', Math.round(widthScale.get_value()));
+        });
+
+        const widthRow = new Adw.ActionRow({
+            title: 'Outline Width',
+            subtitle: 'Adjust border thickness (0px to 5px)',
+        });
+        widthRow.add_suffix(widthScale);
+        outlineGroup.add(widthRow);
+
+        // Color customization
+        const colorPresets = [
+            { label: 'Semi-Transparent White', value: 'rgba(255, 255, 255, 0.45)' },
+            { label: 'Solid White', value: '#ffffff' },
+            { label: 'Accent Blue', value: '#3584e4' },
+            { label: 'Emerald Green', value: '#2ec27e' },
+            { label: 'Translucent Black', value: 'rgba(0, 0, 0, 0.5)' },
+            { label: 'Custom CSS Color...', value: 'custom' },
+        ];
+
+        const colorPresetCombo = new Adw.ComboRow({
+            title: 'Color Preset',
+            subtitle: 'Choose a quick preset or define a custom color',
+            model: Gtk.StringList.new(colorPresets.map(p => p.label)),
+        });
+
+        const currentColor = settings.get_string('dock-outline-color') || 'rgba(255, 255, 255, 0.45)';
+        const initialColorIdx = colorPresets.findIndex(p => p.value === currentColor);
+        colorPresetCombo.selected = initialColorIdx !== -1 ? initialColorIdx : colorPresets.length - 1;
+
+        const colorEntryRow = new Adw.ActionRow({
+            title: 'Custom CSS Color',
+            subtitle: 'Enter hex code (#ffffff) or RGBA color (rgba(255, 255, 255, 0.45))',
+        });
+
+        const colorEntry = new Gtk.Entry({
+            text: currentColor,
+            valign: Gtk.Align.CENTER,
+            hexpand: true,
+            placeholder_text: 'e.g. #3584e4 or rgba(255, 255, 255, 0.45)',
+        });
+
+        let updatingColorPreset = false;
+
+        colorEntry.connect('changed', () => {
+            if (updatingColorPreset) return;
+            const text = colorEntry.get_text().trim();
+            if (text) {
+                settings.set_string('dock-outline-color', text);
+                const foundIdx = colorPresets.findIndex(p => p.value === text);
+                if (foundIdx !== -1 && foundIdx !== colorPresets.length - 1) {
+                    colorPresetCombo.selected = foundIdx;
+                } else {
+                    colorPresetCombo.selected = colorPresets.length - 1;
+                }
+            }
+        });
+
+        colorPresetCombo.connect('notify::selected', () => {
+            const idx = colorPresetCombo.selected;
+            if (idx >= 0 && idx < colorPresets.length - 1) {
+                const val = colorPresets[idx].value;
+                updatingColorPreset = true;
+                colorEntry.set_text(val);
+                settings.set_string('dock-outline-color', val);
+                updatingColorPreset = false;
+            }
+        });
+
+        colorEntryRow.add_suffix(colorEntry);
+        outlineGroup.add(colorPresetCombo);
+        outlineGroup.add(colorEntryRow);
+
+        // Border Style (Solid, Dashed, Dotted, Double)
+        const styleOptions = ['Solid', 'Dashed', 'Dotted', 'Double'];
+        const styleValues = ['solid', 'dashed', 'dotted', 'double'];
+        const currentStyle = settings.get_string('dock-outline-style') || 'solid';
+        const initialStyleIdx = styleValues.indexOf(currentStyle);
+
+        const styleCombo = new Adw.ComboRow({
+            title: 'Border Style',
+            subtitle: 'Choose outline stroke pattern',
+            model: Gtk.StringList.new(styleOptions),
+            selected: initialStyleIdx !== -1 ? initialStyleIdx : 0,
+        });
+
+        styleCombo.connect('notify::selected', () => {
+            const idx = styleCombo.selected;
+            if (idx >= 0 && idx < styleValues.length) {
+                settings.set_string('dock-outline-style', styleValues[idx]);
+            }
+        });
+        outlineGroup.add(styleCombo);
+
+        // Rounded Corners Handling
+        const autoRadiusSwitch = new Adw.SwitchRow({
+            title: 'Auto Corner Radius',
+            subtitle: 'Automatically match the dock container corner radius',
+        });
+        settings.bind('dock-outline-auto-radius', autoRadiusSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+        outlineGroup.add(autoRadiusSwitch);
+
+        const radiusScale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 30, 1);
+        radiusScale.set_draw_value(true);
+        radiusScale.set_value_pos(Gtk.PositionType.RIGHT);
+        radiusScale.set_value(settings.get_int('dock-outline-radius'));
+        radiusScale.connect('value-changed', () => {
+            settings.set_int('dock-outline-radius', Math.round(radiusScale.get_value()));
+        });
+
+        const radiusRow = new Adw.ActionRow({
+            title: 'Custom Corner Radius',
+            subtitle: 'Set fixed corner rounding (0px to 30px)',
+        });
+        radiusRow.add_suffix(radiusScale);
+
+        const updateRadiusSensitivity = () => {
+            radiusRow.set_sensitive(!autoRadiusSwitch.active);
+        };
+        updateRadiusSensitivity();
+        autoRadiusSwitch.connect('notify::active', updateRadiusSensitivity);
+
+        outlineGroup.add(radiusRow);
+        page.add(outlineGroup);
+
         window.add(page);
     }
 }

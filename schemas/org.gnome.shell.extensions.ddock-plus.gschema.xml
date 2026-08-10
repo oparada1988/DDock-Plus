@@ -46,5 +46,35 @@
       <summary>Enable Minimized Window Thumbnails</summary>
       <description>Park thumbnails of minimized windows on the dock</description>
     </key>
+    <key name="enable-dock-outline" type="b">
+      <default>false</default>
+      <summary>Enable Dock Outline</summary>
+      <description>Draw an outline border around the dock container</description>
+    </key>
+    <key name="dock-outline-width" type="i">
+      <default>2</default>
+      <summary>Dock Outline Width</summary>
+      <description>Width of dock outline border in pixels (0 to 5px)</description>
+    </key>
+    <key name="dock-outline-color" type="s">
+      <default>'rgba(255, 255, 255, 0.45)'</default>
+      <summary>Dock Outline Color</summary>
+      <description>Color of dock outline border in CSS format (hex or rgba)</description>
+    </key>
+    <key name="dock-outline-style" type="s">
+      <default>'solid'</default>
+      <summary>Dock Outline Style</summary>
+      <description>Border style for dock outline ('solid', 'dashed', 'dotted', 'double')</description>
+    </key>
+    <key name="dock-outline-auto-radius" type="b">
+      <default>true</default>
+      <summary>Auto Corner Radius</summary>
+      <description>Automatically match dock container corner radius</description>
+    </key>
+    <key name="dock-outline-radius" type="i">
+      <default>14</default>
+      <summary>Dock Outline Corner Radius</summary>
+      <description>Corner radius in pixels (0 to 30px) when auto corner radius is disabled</description>
+    </key>
   </schema>
 </schemalist>
