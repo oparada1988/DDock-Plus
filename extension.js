@@ -11,7 +11,7 @@ export default class DDockPlusExtension extends Extension {
         console.log(`[DDock-Plus] Enabling extension ${this.uuid}`);
 
         try {
-            this._settings = this.getSettings();
+            this._settings = this.getSettings('org.gnome.shell.extensions.ddock-plus');
 
             HideMinimizedWindows.enable();
             MinimizedToDock.enable();

@@ -6,7 +6,7 @@ import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/
 
 export default class DDockPlusPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
-        const settings = this.getSettings();
+        const settings = this.getSettings('org.gnome.shell.extensions.ddock-plus');
         const page = new Adw.PreferencesPage({
             title: 'General',
             icon_name: 'preferences-system-symbolic',
@@ -77,14 +77,50 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
         settings.bind('enable-custom-stack', customSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
         customGroup.add(customSwitch);
 
-        const customPathRow = new Adw.EntryRow({
-            title: 'Custom Folder Path',
-            text: settings.get_string('custom-folder-path'),
+        const customFolderRow = new Adw.ActionRow({
+            title: 'Custom Folder',
         });
-        customPathRow.connect('changed', () => {
-            settings.set_string('custom-folder-path', customPathRow.text.trim());
+
+        const updateCustomFolderSubtitle = () => {
+            const currentPath = settings.get_string('custom-folder-path');
+            if (currentPath) {
+                const file = Gio.File.new_for_path(currentPath);
+                customFolderRow.set_subtitle(file.get_basename() || currentPath);
+            } else {
+                customFolderRow.set_subtitle('No Folder Selected');
+            }
+        };
+        updateCustomFolderSubtitle();
+
+        const selectFolderBtn = new Gtk.Button({
+            label: 'Select Folder',
+            valign: Gtk.Align.CENTER,
         });
-        customGroup.add(customPathRow);
+        selectFolderBtn.connect('clicked', () => {
+            const dialog = new Gtk.FileChooserNative({
+                title: 'Select Custom Folder',
+                transient_for: window,
+                action: Gtk.FileChooserAction.SELECT_FOLDER,
+                modal: true,
+            });
+
+            dialog.connect('response', (d, responseId) => {
+                if (responseId === Gtk.ResponseType.ACCEPT) {
+                    const file = d.get_file();
+                    if (file) {
+                        settings.set_string('custom-folder-path', file.get_path());
+                        updateCustomFolderSubtitle();
+                    }
+                }
+                d.destroy();
+            });
+
+            dialog.show();
+        });
+
+        customFolderRow.add_suffix(selectFolderBtn);
+        customFolderRow.set_activatable_widget(selectFolderBtn);
+        customGroup.add(customFolderRow);
 
         const customModeModel = Gtk.StringList.new(['Fan / List View', '4x6 Grid View']);
         const customCombo = new Adw.ComboRow({

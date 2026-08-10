@@ -289,18 +289,7 @@ export class FolderStackInstance {
             icon_size: dash.iconSize,
         }));
 
-        const { depth: pileDepth, size, step } = this._pileMetrics(dash);
         box.cards = [];
-        for (let depth = pileDepth - 1; depth >= 0; depth--) {
-            const card = _fileIcon(this.recent[depth], size);
-            card.set({
-                translation_x: depth * step,
-                translation_y: -depth * step,
-                rotation_angle_z: depth * STACK_TILT,
-            });
-            box.add_child(card);
-            box.cards[depth] = card;
-        }
         return box;
     }
 
@@ -371,12 +360,11 @@ export class FolderStackInstance {
         const cards = stack.cards ?? [];
         const pileX = anchorX;
         const pileY = buttonY + buttonHeight / 2;
-        const pile = this._pileMetrics(info.dash);
-        const cardStart = depth => ({
-            x: pileX + depth * pile.step,
-            y: pileY - depth * pile.step,
-            scale: pile.size / iconSize,
-            tilt: depth * STACK_TILT,
+        const cardStart = () => ({
+            x: pileX,
+            y: pileY,
+            scale: 0.8,
+            tilt: 0,
         });
 
         const room = Math.floor((anchorY - geometry.y - TOP_MARGIN) / spacing) - 1;
