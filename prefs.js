@@ -301,20 +301,76 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
         settings.bind('enable-dock-outline', outlineSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
         outlineGroup.add(outlineSwitch);
 
-        // Width scale (0px to 5px)
-        const widthScale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 5, 1);
-        widthScale.set_draw_value(true);
-        widthScale.set_value_pos(Gtk.PositionType.RIGHT);
-        widthScale.set_value(settings.get_int('dock-outline-width'));
-        widthScale.connect('value-changed', () => {
-            settings.set_int('dock-outline-width', Math.round(widthScale.get_value()));
+        const createNumericControl = (minVal, maxVal, initialValue, onValueChanged) => {
+            const box = new Gtk.Box({
+                orientation: Gtk.Orientation.HORIZONTAL,
+                spacing: 6,
+                valign: Gtk.Align.CENTER,
+            });
+
+            const minusBtn = new Gtk.Button({
+                icon_name: 'list-remove-symbolic',
+                valign: Gtk.Align.CENTER,
+                tooltip_text: 'Decrease',
+            });
+
+            const scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, minVal, maxVal, 1);
+            scale.set_draw_value(true);
+            scale.set_value_pos(Gtk.PositionType.RIGHT);
+            scale.set_value(initialValue);
+            scale.set_width_request(160);
+
+            const plusBtn = new Gtk.Button({
+                icon_name: 'list-add-symbolic',
+                valign: Gtk.Align.CENTER,
+                tooltip_text: 'Increase',
+            });
+
+            const updateButtonSensitivity = () => {
+                const val = scale.get_value();
+                minusBtn.set_sensitive(val > minVal);
+                plusBtn.set_sensitive(val < maxVal);
+            };
+
+            scale.connect('value-changed', () => {
+                const rounded = Math.round(scale.get_value());
+                updateButtonSensitivity();
+                onValueChanged(rounded);
+            });
+
+            minusBtn.connect('clicked', () => {
+                const current = scale.get_value();
+                if (current > minVal) {
+                    scale.set_value(current - 1);
+                }
+            });
+
+            plusBtn.connect('clicked', () => {
+                const current = scale.get_value();
+                if (current < maxVal) {
+                    scale.set_value(current + 1);
+                }
+            });
+
+            updateButtonSensitivity();
+
+            box.append(minusBtn);
+            box.append(scale);
+            box.append(plusBtn);
+
+            return { box, scale, minusBtn, plusBtn };
+        };
+
+        // Outline Width (0px to 5px)
+        const widthControl = createNumericControl(0, 5, settings.get_int('dock-outline-width'), val => {
+            settings.set_int('dock-outline-width', val);
         });
 
         const widthRow = new Adw.ActionRow({
             title: 'Outline Width',
             subtitle: 'Adjust border thickness (0px to 5px)',
         });
-        widthRow.add_suffix(widthScale);
+        widthRow.add_suffix(widthControl.box);
         outlineGroup.add(widthRow);
 
         // Color customization
@@ -409,19 +465,15 @@ export default class DDockPlusPreferences extends ExtensionPreferences {
         settings.bind('dock-outline-auto-radius', autoRadiusSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
         outlineGroup.add(autoRadiusSwitch);
 
-        const radiusScale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 30, 1);
-        radiusScale.set_draw_value(true);
-        radiusScale.set_value_pos(Gtk.PositionType.RIGHT);
-        radiusScale.set_value(settings.get_int('dock-outline-radius'));
-        radiusScale.connect('value-changed', () => {
-            settings.set_int('dock-outline-radius', Math.round(radiusScale.get_value()));
+        const radiusControl = createNumericControl(0, 30, settings.get_int('dock-outline-radius'), val => {
+            settings.set_int('dock-outline-radius', val);
         });
 
         const radiusRow = new Adw.ActionRow({
             title: 'Custom Corner Radius',
             subtitle: 'Set fixed corner rounding (0px to 30px)',
         });
-        radiusRow.add_suffix(radiusScale);
+        radiusRow.add_suffix(radiusControl.box);
 
         const updateRadiusSensitivity = () => {
             radiusRow.set_sensitive(!autoRadiusSwitch.active);
